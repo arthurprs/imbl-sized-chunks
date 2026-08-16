@@ -98,6 +98,11 @@
 #![deny(nonstandard_style)]
 #![warn(unreachable_pub, missing_docs)]
 #![cfg_attr(test, deny(warnings))]
+// We support rust 1.56, which considers an unsafe block inside an `unsafe
+// fn` to be unnecessary and worns. On the other hand, newer linters require
+// unsafe blocks for unsafe operations in an unsafe function. We handle this
+// discrepancy by silencing the warning.
+#![cfg_attr(test, allow(unused_unsafe))]
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 
 pub mod inline_array;
@@ -118,6 +123,32 @@ pub use crate::sparse_chunk::SparseChunk;
 pub mod ring_buffer;
 #[cfg(feature = "ringbuffer")]
 pub use crate::ring_buffer::RingBuffer;
+
+/// Like [`std::ptr::drop_in_place`], but deferred until the end of scope.
+///
+/// We often want to drop some elements of our chunk and then update the
+/// metadata (like [`Chunk::left`] or [`Chunk::right`]). It's inconvenient to do the
+/// metadata changes first (because changing the metadata makes our convenience
+/// indexing methods work differently) and it's dangerous to do the metadata
+/// changes second (because some element's drop might panic and we'll never do
+/// the metadata changes).
+///
+/// This function lets us capture the slice to be dropped (with the old metadata
+/// still in place) and then update the metadata. The slice's elements will then
+/// be dropped at the end of the scope.
+unsafe fn drop_later<T: ?Sized>(x: *mut T) -> DropGuard<T> {
+    DropGuard(x)
+}
+
+struct DropGuard<T: ?Sized>(*mut T);
+
+impl<T: ?Sized> Drop for DropGuard<T> {
+    fn drop(&mut self) {
+        unsafe {
+            std::ptr::drop_in_place(self.0);
+        }
+    }
+}
 
 #[cfg(test)]
 mod covariance_tests {
