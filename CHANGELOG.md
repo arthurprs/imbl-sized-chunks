@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - Unreleased
+
+### CHANGED
+
+-   The `bitmaps` crate dependency has been removed (it is unmaintained and flagged by
+    RUSTSEC-2026-0247, and carries the unpatched soundness issue RUSTSEC-2025-0167). Its
+    functionality is now provided in-tree by the new public module `bitmap`, exposing `Bitmap`,
+    `Iter`, `Bits` and `BitsImpl` with the same API surface this crate relies on. This is a
+    breaking change: the `SparseChunk` method `indices()` now returns `bitmap::Iter` instead
+    of the `bitmaps` crate type, and the `BitsImpl<N>: Bits` bound now refers to the in-tree
+    trait.
+
+-   `SparseChunk::is_empty` and `is_full` now check the occupancy bitmap directly.
+
+### FIXED
+
+-   `bitmap::Iter` no longer yields the meeting element twice when iterated from both ends
+    at once (bug inherited from the `bitmaps` crate's `Iter`); it is now also
+    `FusedIterator`.
+
+-   `Bitmap::from_value` clears bits at or above `N`, so a value with out-of-range bits set
+    can no longer produce an incoherent bitmap (reporting elements no scan or iterator can
+    see, and vice versa). `bitmaps` leaves the bit in place and leaks it through its
+    unmasked scans.
+
+-   The only other behavioral divergence from `bitmaps`: the `bool`-backed
+    `Bitmap<1>::prev_index(before > 0)` answers `Some(0)` when the bit is set; upstream's
+    implementation has a dead branch returning `None` for an out-of-contract input.
+
 ## [0.1.3] - 2024-12-30
 
 ### CHANGED

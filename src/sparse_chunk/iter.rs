@@ -1,4 +1,4 @@
-use bitmaps::{Bitmap, Bits, BitsImpl};
+use crate::bitmap::{Bitmap, Bits, BitsImpl};
 
 use super::SparseChunk;
 
