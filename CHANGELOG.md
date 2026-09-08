@@ -19,6 +19,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 -   `SparseChunk::is_empty` and `is_full` now check the occupancy bitmap directly.
 
+-   The minimum supported Rust version, previously implied 1.56, is now explicit at 1.85,
+    matching `imbl`.
+
 ### FIXED
 
 -   `bitmap::Iter` no longer yields the meeting element twice when iterated from both ends
