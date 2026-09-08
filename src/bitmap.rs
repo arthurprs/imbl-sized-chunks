@@ -757,6 +757,11 @@ mod test {
             indices.push(N - 1);
         }
         indices.sort_unstable();
+        // O(1) membership oracle; Vec::contains is too slow under Miri.
+        let mut occupied = vec![false; N];
+        for &i in &indices {
+            occupied[i] = true;
+        }
 
         let mut b: Bitmap<N> = Bitmap::new();
         assert!(b.is_empty());
@@ -782,9 +787,9 @@ mod test {
         // Forward scan over set bits.
         let mut from_oracle = indices.iter().copied();
         assert_eq!(b.first_index(), from_oracle.next());
-        for (&i, &j) in indices.iter().zip(indices.iter().skip(1)) {
+        for (k, (&i, &j)) in indices.iter().zip(indices.iter().skip(1)).enumerate() {
             assert_eq!(b.next_index(i), Some(j));
-            assert_eq!(b.next_index(j), indices.iter().skip_while(|&&k| k <= j).next().copied());
+            assert_eq!(b.next_index(j), indices.get(k + 2).copied());
         }
         assert_eq!(b.next_index(indices[indices.len() - 1]), None);
 
@@ -796,7 +801,7 @@ mod test {
 
         // Clear bits.
         let mut first_free = 0;
-        while indices.contains(&first_free) {
+        while first_free < N && occupied[first_free] {
             first_free += 1;
         }
         if first_free < N {
@@ -804,10 +809,13 @@ mod test {
         }
         for start in 0..N {
             let mut expected = start + 1;
-            while indices.contains(&expected) {
+            while expected < N && occupied[expected] {
                 expected += 1;
             }
-            assert_eq!(b.next_false_index(start), if expected < N { Some(expected) } else { None });
+            assert_eq!(
+                b.next_false_index(start),
+                if expected < N { Some(expected) } else { None }
+            );
         }
 
         // Iterator and reverse iterator.
@@ -940,17 +948,21 @@ mod test {
         let mut rng = XorShift(seed);
         for round in 0..16usize {
             let density = (round + 1) * 48; // out of 768, i.e. up to ~83%
-            let mut indices: Vec<usize> = (0..N)
+            let indices: Vec<usize> = (0..N)
                 .filter(|_| rng.next() % 768 < density as u64)
                 .collect();
-            indices.dedup();
+            // O(1) membership oracle; Vec::contains is too slow under Miri.
+            let mut occupied = vec![false; N];
+            for &i in &indices {
+                occupied[i] = true;
+            }
 
             let mut b: Bitmap<N> = Bitmap::new();
             for &i in &indices {
                 b.set(i, true);
             }
-            for i in 0..N {
-                assert_eq!(b.get(i), indices.contains(&i));
+            for (i, &is) in occupied.iter().enumerate() {
+                assert_eq!(b.get(i), is);
             }
             assert_eq!(b.len(), indices.len());
             assert_eq!(b.first_index(), indices.first().copied());
@@ -963,7 +975,7 @@ mod test {
             }
             for start in (0..N).step_by(64) {
                 let mut expected = start + 1;
-                while indices.contains(&expected) {
+                while expected < N && occupied[expected] {
                     expected += 1;
                 }
                 assert_eq!(
