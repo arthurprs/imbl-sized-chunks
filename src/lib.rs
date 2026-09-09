@@ -105,6 +105,7 @@
 #![cfg_attr(test, allow(unused_unsafe))]
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 
+pub mod bitmap;
 pub mod inline_array;
 pub mod sized_chunk;
 pub mod sparse_chunk;

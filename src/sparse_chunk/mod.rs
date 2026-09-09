@@ -17,7 +17,7 @@ use core::slice::{from_raw_parts, from_raw_parts_mut};
 #[cfg(feature = "std")]
 use std::collections::{BTreeMap, HashMap};
 
-use bitmaps::{Bitmap, Bits, BitsImpl, Iter as BitmapIter};
+use crate::bitmap::{Bitmap, Bits, BitsImpl, Iter as BitmapIter};
 
 mod iter;
 
@@ -144,13 +144,13 @@ where
     /// Test if the chunk is empty.
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.map.len() == 0
+        self.map.is_empty()
     }
 
     /// Test if the chunk is at capacity.
     #[inline]
     pub fn is_full(&self) -> bool {
-        self.len() == N
+        self.map.is_full()
     }
 
     /// Insert a new value at a given index.
